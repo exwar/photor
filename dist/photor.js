@@ -60,7 +60,7 @@
                 count: 0,                   // Количество фотографий
                 loadingRange: 1,            // Диапазон подгружаемых фотографий (отн. текущей)
                 slideIdPrefix: '_',         // Префикс для класса с номером слайда
-                delay: 300,                 // Время анимации для слайдов
+                delay: 3000,                 // Время анимации для слайдов
                 keyboard: true,             // Управление с клавиатуры
 
                 transform: getSupportedTransform()
@@ -119,9 +119,6 @@
                 p.layer.html(content);
 
                 p.slide = root.find('.' + params.slide);
-                p.slide.each(function(i) {
-                    $(this).css('left', i * 100 + '%');
-                });
 
                 // Settings
                 p.current = params.current;
@@ -129,6 +126,7 @@
                 p.thumbsDragging = false;
                 p.thumbsIndent = 0;
                 p.events = [];
+                p.layerIndent = 0;
 
                 p.viewportWidth = p.viewport.outerWidth();
                 p.viewportHeight = p.viewport.outerHeight();
@@ -224,21 +222,18 @@
             var p = data[galleryId];
 
             delay = delay == null ? params.delay : delay;
+            p.layerIndent = p.layerIndent - 100 * (target - p.current);
 
             p.root.addClass(params._animated);
 
             p.layer
                 .css('transition-duration', delay + 'ms')
-                .css(methods.setIndent(-target * 100));
+                .css(methods.setIndent(p.layerIndent));
 
             p.current = target;
 
             // Mark slide as current
             methods.setCurrentThumb(galleryId, target);
-            p.slide.removeClass(params._current);
-            p.slide
-                .filter('.' + params.slideIdPrefix + target)
-                .addClass(params._current);
 
             // Load slide's range
             methods.loadSlides(galleryId, target);
@@ -247,7 +242,6 @@
             // Callback
             if (params.onShow) {
                 setTimeout(function() {
-                    p.root.removeClass(params._animated);
                     params.onShow(p);
                 }, delay);
             }
@@ -618,6 +612,24 @@
     }
 
     /**
+     * Возвращает текущее значение отступа layer
+     *
+     * @param {string|number} galleryId Id галереи (ключ для массива с объектами инстансов галереи)
+     */
+    function getIndent(galleryId) {
+        var p = data[galleryId],
+            value;
+
+        if (params.transform) {
+            value = p.layer.css(prefixes[params.transform.property]).match(/(-?[0-9\.]+)/g)[4];
+        } else {
+            value = p.layer.css('left');
+        }
+
+        return value / p.viewportWidth * 100;
+    }
+
+    /**
      * Debounce декоратор
      *
      * @param {function} fn Функция
@@ -748,6 +760,7 @@
                     if (touch.shiftXAbs >= 5 && touch.shiftXAbs > touch.shiftYAbs) {
                         p.root.addClass(params._dragging);
                         touch.isSlide = true;
+                        touch.startShift = getIndent(galleryId);
                     }
                 }
 
@@ -824,7 +837,7 @@
                 touch.shiftX = touch.shiftX / 3;
             }
 
-            p.layer.css(methods.setIndent(100 * (touch.shiftX / p.controlWidth - p.current)));
+            p.layer.css(methods.setIndent(touch.startShift + 100 * (touch.shiftX / p.controlWidth)));
         }
 
         /**
@@ -862,7 +875,7 @@
             p.thumbsLayer.css(methods.setIndent(p.thumbsIndent, 'px'));
         }
 
-        /*
+        /**
          * Завершение движения миниатюр
          */
         function thumbsEnd() {
@@ -963,7 +976,7 @@
         }
     }
 
-    /*
+    /**
      * Устанавливает обработчик изменения размера окна
      *
      * @param {string|number} galleryId Id галереи (ключ для массива с объектами инстансов галереи)
@@ -982,7 +995,7 @@
         }
     }
 
-    /*
+    /**
      * Устанавливает обработчики управления с клавиатуры
      *
      * @param {string|number} galleryId Id галереи (ключ для массива с объектами инстансов галереи)
@@ -1019,7 +1032,7 @@
         });
     }
 
-    /*
+    /**
      * Устанавливает обработчики на окончание анимации
      *
      * @param {string|number} galleryId Id галереи (ключ для массива с объектами инстансов галереи)
@@ -1029,8 +1042,21 @@
             transitionEnd = ['transitionend', 'MSTransitionEnd', 'oTransitionEnd'];
 
         handlers.transitionEnd = function(e) {
+            console.log('transition end');
+
+            // Turn off animation
             p.root.removeClass(params._animated);
-            p.layer.css('transition-duration', '0s');
+
+            // Mark slide as current
+            p.slide.removeClass(params._current);
+            p.slide
+                .filter('.' + params.slideIdPrefix + p.current)
+                .addClass(params._current);
+
+            // Restore layer indent
+            p.layer
+                .css('transition-duration', '0s')
+                .css(methods.setIndent(p.layerIndent = 0));
 
             for (var i = 0; i < p.count; i++) {
                 var elem = p.root.find('.' + params.slide + '.' + params.slideIdPrefix + i);

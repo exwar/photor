@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Document</title>
-
+    <meta name="viewport" content="width=device-width">
     <style>
+    body {
+        text-align: center;
+        }
     .root {
         width: 100px;
         height: 100px;
@@ -12,7 +15,7 @@
         font-size: 0;
         outline: 1px dotted #ccc;
         margin: auto;
-        /*overflow: hidden;*/
+        overflow: hidden;
         }
         .root__wrap {
             width: 100%;
@@ -100,6 +103,9 @@
     <div class="thumb" data-rel="8"></div>
     <div class="thumb" data-rel="9"></div>
 </div>
+
+<div id="prev">назад</div>
+<div id="next">вперед</div>
 
 <script src="libs/jquery/jquery.js"></script>
 <script>
@@ -252,6 +258,14 @@ $(document).ready(function() {
         var target = $(this).attr('data-rel');
 
         go(target);
+    });
+
+    $('#prev').on('click', function() {
+        if (current > 0) go(current - 1);
+    });
+
+    $('#next').on('click', function() {
+        if (current < count) go(current + 1);
     });
 
 });
